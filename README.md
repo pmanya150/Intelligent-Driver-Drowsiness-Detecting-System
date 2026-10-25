@@ -1,5 +1,12 @@
 # Intelligent Driver Drowsiness Detecting System
 
+## 🚀 Live Demo
+
+**Streamlit Application:**  
+https://intelligent-driver-drowsiness-detecting-system-zp7ufuxu5zkhqia.streamlit.app/
+
+---
+
 ## 📌 Project Overview
 
 **Intelligent Driver Drowsiness Detecting System** is an EEG-based machine learning system designed to detect driver vigilance states and identify possible drowsiness.
@@ -217,87 +224,4 @@ Move into the project directory:
 cd Intelligent-Driver-Drowsiness-Detection
 ```
 
-Create a virtual environment:
-
-```bash
-python -m venv .venv
-```
-
-Activate it on Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Install the required libraries:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## ▶️ Running the Application
-
-Run the Streamlit application:
-
-```bash
-python -m streamlit run app.py
-```
-
-The application will open in the browser.
-
-Upload the required EEG `.mat` dataset through the interface and select a sample and channel for analysis.
-
----
-
-## 📂 Dataset Setup
-
-Because the EEG dataset is large, it is **not stored in this GitHub repository**.
-
-After obtaining the dataset, keep it locally and upload it through the Streamlit interface.
-
-The expected MATLAB dataset should contain the EEG data variable used by the application.
-
----
-
-## 📊 Results
-
-The system achieved approximately **69.44% sample-level accuracy** using LOSO predictions followed by majority voting over the original EEG samples.
-
-### Sample-Level Classification
-
-| Class | Precision | Recall | F1-score |
-|---|---:|---:|---:|
-| Alert | 0.6870 | 0.7141 | 0.7003 |
-| Drowsy | 0.7024 | 0.6746 | 0.6882 |
-
-**Sample-Level Accuracy: 69.44%**
-
----
-
-## 🔮 Future Scope
-
-Possible future improvements include:
-
-- Integration of additional modalities such as facial/eye-based signals.
-- Lightweight deep learning models.
-- Temporal sequence modelling.
-- Real-time EEG stream processing.
-- Visual and audible drowsiness alerts.
-- Further optimization for real-time deployment.
-- Evaluation on larger and more diverse datasets.
-
----
-
-## ⚠️ Disclaimer
-
-This project is a **research and academic prototype**. It should not be used as a safety-critical system for real-world driving without extensive additional validation.
-
----
-
-## 👩‍💻 Project
-
-**Intelligent Driver Drowsiness Detecting System**
-
-Developed as an academic/research project using EEG signal processing and machine learning.
+Create
