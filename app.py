@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import joblib
 import numpy as np
@@ -19,6 +20,59 @@ st.set_page_config(
 
 
 # =========================================================
+# CUSTOM CSS
+# =========================================================
+
+st.markdown(
+    """
+    <style>
+
+    .main-title {
+        font-size: 38px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        text-align: center;
+        font-size: 18px;
+        color: #666666;
+        margin-bottom: 25px;
+    }
+
+    .result-box {
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        font-size: 28px;
+        font-weight: 700;
+        margin: 20px 0;
+    }
+
+    .alert-box {
+        background-color: #e8f5e9;
+        border: 2px solid #4caf50;
+    }
+
+    .drowsy-box {
+        background-color: #ffebee;
+        border: 2px solid #f44336;
+    }
+
+    .section-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-top: 20px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
 # MODEL PATH
 # =========================================================
 
@@ -33,8 +87,18 @@ MODEL_PATH = os.path.join(
 # =========================================================
 
 if not os.path.exists(MODEL_PATH):
-    st.error("drowsiness_model.joblib not found!")
+
+    st.error(
+        "❌ drowsiness_model.joblib was not found."
+    )
+
+    st.info(
+        "Place drowsiness_model.joblib in the same "
+        "folder as app.py."
+    )
+
     st.stop()
+
 
 model = joblib.load(MODEL_PATH)
 
@@ -54,12 +118,33 @@ bands = {
 
 
 # =========================================================
-# PREPROCESSING
+# FEATURE NAMES
+# =========================================================
+
+feature_names = [
+    "delta",
+    "theta",
+    "alpha",
+    "beta",
+    "delta_relative",
+    "theta_relative",
+    "alpha_relative",
+    "beta_relative",
+    "theta_alpha_ratio",
+    "differential_entropy"
+]
+
+
+# =========================================================
+# PREPROCESS EEG SIGNAL
 # =========================================================
 
 def preprocess_channel(signal, fs):
 
-    signal = np.asarray(signal, dtype=float)
+    signal = np.asarray(
+        signal,
+        dtype=float
+    )
 
     # Remove DC component
     signal = signal - np.mean(signal)
@@ -72,7 +157,10 @@ def preprocess_channel(signal, fs):
 
     b, a = butter(
         4,
-        [low / nyquist, high / nyquist],
+        [
+            low / nyquist,
+            high / nyquist
+        ],
         btype="band"
     )
 
@@ -86,7 +174,7 @@ def preprocess_channel(signal, fs):
 
 
 # =========================================================
-# PSD
+# POWER SPECTRAL DENSITY
 # =========================================================
 
 def calculate_psd(window, fs):
@@ -94,7 +182,10 @@ def calculate_psd(window, fs):
     frequencies, psd = welch(
         window,
         fs=fs,
-        nperseg=min(len(window), 256)
+        nperseg=min(
+            len(window),
+            256
+        )
     )
 
     return frequencies, psd
@@ -117,11 +208,13 @@ def band_power(
     )
 
     mask = (
-        (frequencies >= low_freq) &
+        (frequencies >= low_freq)
+        &
         (frequencies <= high_freq)
     )
 
     if np.sum(mask) == 0:
+
         return 0.0
 
     power = np.trapezoid(
@@ -133,16 +226,23 @@ def band_power(
 
 
 # =========================================================
-# FEATURE EXTRACTION
+# EXTRACT 10 EEG FEATURES
 # =========================================================
 
 def extract_all_features(window, fs):
 
     features = {}
+
     powers = {}
 
-    # Absolute band powers
-    for band_name, (low, high) in bands.items():
+    # -----------------------------------------------------
+    # Absolute Band Powers
+    # -----------------------------------------------------
+
+    for band_name, (
+        low,
+        high
+    ) in bands.items():
 
         power = band_power(
             window,
@@ -152,45 +252,81 @@ def extract_all_features(window, fs):
         )
 
         powers[band_name] = power
+
         features[band_name] = power
 
-    # Total power
+
+    # -----------------------------------------------------
+    # Total Power
+    # -----------------------------------------------------
+
     total_power = sum(
         powers.values()
     )
 
     if total_power == 0:
+
         total_power = 1e-10
 
-    # Relative band powers
+
+    # -----------------------------------------------------
+    # Relative Band Powers
+    # -----------------------------------------------------
+
     for band_name in bands:
 
         features[
             band_name + "_relative"
         ] = (
-            powers[band_name] /
+            powers[band_name]
+            /
             total_power
         )
 
-    # Theta / Alpha ratio
-    features["theta_alpha_ratio"] = (
-        powers["theta"] /
-        (powers["alpha"] + 1e-10)
-    )
 
-    # Differential entropy
-    variance = np.var(window)
+    # -----------------------------------------------------
+    # Theta / Alpha Ratio
+    # -----------------------------------------------------
 
-    features["differential_entropy"] = (
-        0.5 *
-        np.log(
-            2 *
-            np.pi *
-            np.e *
-            variance +
+    features[
+        "theta_alpha_ratio"
+    ] = (
+        powers["theta"]
+        /
+        (
+            powers["alpha"]
+            +
             1e-10
         )
     )
+
+
+    # -----------------------------------------------------
+    # Differential Entropy
+    # -----------------------------------------------------
+
+    variance = np.var(
+        window
+    )
+
+    features[
+        "differential_entropy"
+    ] = (
+        0.5
+        *
+        np.log(
+            2
+            *
+            np.pi
+            *
+            np.e
+            *
+            variance
+            +
+            1e-10
+        )
+    )
+
 
     return features
 
@@ -199,55 +335,105 @@ def extract_all_features(window, fs):
 # HEADER
 # =========================================================
 
-st.title(
-    "🚗 Intelligent Driver Drowsiness Detecting System"
+st.markdown(
+    '<div class="main-title">'
+    '🚗 Intelligent Driver Drowsiness Detecting System'
+    '</div>',
+    unsafe_allow_html=True
 )
 
-st.subheader(
-    "EEG-Based Driver Vigilance Monitoring"
+st.markdown(
+    '<div class="subtitle">'
+    'EEG-Based Driver Vigilance Monitoring System'
+    '</div>',
+    unsafe_allow_html=True
 )
-
-st.write(
-    "Upload an EEG dataset and analyze the signal "
-    "using the trained machine learning model."
-)
-
-st.divider()
 
 
 # =========================================================
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title("⚙️ System Information")
-
-st.sidebar.write(
-    "Sampling Frequency: **128 Hz**"
+st.sidebar.title(
+    "⚙️ System Information"
 )
-
-st.sidebar.write(
-    "Window Duration: **2 seconds**"
-)
-
-st.sidebar.write(
-    "Overlap: **50%**"
-)
-
-st.sidebar.write(
-    "Features: **10**"
-)
-
-st.sidebar.write(
-    "Classifier: **Linear SVM**"
-)
-
-
-# =========================================================
-# MODEL STATUS
-# =========================================================
 
 st.sidebar.success(
     "Model Loaded Successfully"
+)
+
+st.sidebar.write(
+    "**Sampling Frequency:** 128 Hz"
+)
+
+st.sidebar.write(
+    "**Window Duration:** 2 seconds"
+)
+
+st.sidebar.write(
+    "**Window Overlap:** 50%"
+)
+
+st.sidebar.write(
+    "**EEG Features:** 10"
+)
+
+st.sidebar.write(
+    "**Classifier:** Linear SVM"
+)
+
+st.sidebar.divider()
+
+st.sidebar.info(
+    "This is an academic research prototype "
+    "for EEG-based driver drowsiness detection."
+)
+
+
+# =========================================================
+# DASHBOARD OVERVIEW
+# =========================================================
+
+st.subheader(
+    "📊 System Dashboard"
+)
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+
+    st.metric(
+        "EEG Samples",
+        "2022"
+    )
+
+with col2:
+
+    st.metric(
+        "EEG Channels",
+        "30"
+    )
+
+with col3:
+
+    st.metric(
+        "EEG Features",
+        "10"
+    )
+
+with col4:
+
+    st.metric(
+        "Subjects",
+        "11"
+    )
+
+
+st.info(
+    "The system processes EEG signals, extracts "
+    "frequency-domain features and predicts the "
+    "driver's vigilance state using a trained "
+    "machine learning model."
 )
 
 
@@ -255,31 +441,42 @@ st.sidebar.success(
 # FILE UPLOAD
 # =========================================================
 
+st.divider()
+
+st.subheader(
+    "📂 EEG Dataset"
+)
+
 uploaded_file = st.file_uploader(
-    "📂 Upload EEG Dataset (.mat)",
+    "Upload EEG Dataset (.mat)",
     type=["mat"]
 )
 
 
 # =========================================================
-# PROCESS DATASET
+# PROCESS UPLOADED DATA
 # =========================================================
 
 if uploaded_file is not None:
 
     try:
 
-        # Load MATLAB file
+        # -------------------------------------------------
+        # LOAD MATLAB DATA
+        # -------------------------------------------------
+
         data = loadmat(
             uploaded_file
         )
 
+
         st.success(
-            "EEG dataset uploaded successfully!"
+            "✅ EEG dataset uploaded successfully!"
         )
 
+
         # -------------------------------------------------
-        # DATASET VARIABLES
+        # AVAILABLE VARIABLES
         # -------------------------------------------------
 
         available_keys = [
@@ -288,17 +485,15 @@ if uploaded_file is not None:
             if not key.startswith("__")
         ]
 
-        st.subheader(
-            "📂 Dataset Information"
-        )
 
-        st.write(
-            "Available variables:"
-        )
+        with st.expander(
+            "View Dataset Variables"
+        ):
 
-        st.write(
-            available_keys
-        )
+            st.write(
+                available_keys
+            )
+
 
         # -------------------------------------------------
         # CHECK EEG DATA
@@ -307,61 +502,98 @@ if uploaded_file is not None:
         if "EEGsample" not in data:
 
             st.error(
-                "EEGsample variable was not found "
-                "in the uploaded dataset."
+                "❌ EEGsample variable was not "
+                "found in the uploaded dataset."
             )
 
             st.stop()
+
 
         EEG = np.asarray(
             data["EEGsample"]
         )
 
+
         # -------------------------------------------------
-        # DATASET SHAPE
+        # DATASET INFORMATION
         # -------------------------------------------------
 
-        st.info(
-            f"EEG Shape: {EEG.shape}"
+        st.subheader(
+            "📋 Dataset Information"
         )
 
-        # -------------------------------------------------
-        # SAMPLE SELECTION
-        # -------------------------------------------------
+        info_col1, info_col2 = st.columns(2)
 
-        sample_number = st.number_input(
-            "Select EEG Sample",
-            min_value=0,
-            max_value=EEG.shape[0] - 1,
-            value=0,
-            step=1
+        with info_col1:
+
+            st.write(
+                f"**EEG Shape:** {EEG.shape}"
+            )
+
+        with info_col2:
+
+            st.write(
+                f"**Number of Samples:** {EEG.shape[0]}"
+            )
+
+
+        # =================================================
+        # SAMPLE AND CHANNEL SELECTION
+        # =================================================
+
+        st.divider()
+
+        st.subheader(
+            "🔍 EEG Analysis"
         )
 
-        # -------------------------------------------------
-        # CHANNEL SELECTION
-        # -------------------------------------------------
 
-        channel_number = st.number_input(
-            "Select EEG Channel",
-            min_value=0,
-            max_value=EEG.shape[1] - 1,
-            value=0,
-            step=1
+        selection_col1, selection_col2 = st.columns(2)
+
+
+        with selection_col1:
+
+            sample_number = st.number_input(
+                "Select EEG Sample",
+                min_value=0,
+                max_value=EEG.shape[0] - 1,
+                value=0,
+                step=1
+            )
+
+
+        with selection_col2:
+
+            channel_number = st.number_input(
+                "Select EEG Channel",
+                min_value=0,
+                max_value=EEG.shape[1] - 1,
+                value=0,
+                step=1
+            )
+
+
+        st.caption(
+            "Select an EEG sample and channel, "
+            "then click Analyze EEG."
         )
 
-        # -------------------------------------------------
-        # ANALYZE BUTTON
-        # -------------------------------------------------
 
         analyze_button = st.button(
             "🔍 Analyze EEG",
             use_container_width=True
         )
 
+
+        # =================================================
+        # ANALYSIS
+        # =================================================
+
         if analyze_button:
 
+
             # -------------------------------------------------
-            # GET EEG SIGNAL
+            # GET SELECTED EEG SIGNAL
             # -------------------------------------------------
 
             signal = EEG[
@@ -369,6 +601,7 @@ if uploaded_file is not None:
                 channel_number,
                 :
             ]
+
 
             # -------------------------------------------------
             # PREPROCESS
@@ -379,8 +612,9 @@ if uploaded_file is not None:
                 fs
             )
 
+
             # -------------------------------------------------
-            # CREATE WINDOWS
+            # CREATE 2-SECOND WINDOWS
             # -------------------------------------------------
 
             window_size = int(
@@ -391,12 +625,17 @@ if uploaded_file is not None:
                 window_size * 0.5
             )
 
+
             windows = []
+
 
             for start in range(
                 0,
-                len(cleaned_signal) -
-                window_size + 1,
+                len(cleaned_signal)
+                -
+                window_size
+                +
+                1,
                 stride
             ):
 
@@ -409,9 +648,11 @@ if uploaded_file is not None:
                     window
                 )
 
+
             windows = np.asarray(
                 windows
             )
+
 
             # -------------------------------------------------
             # CHECK WINDOWS
@@ -420,17 +661,19 @@ if uploaded_file is not None:
             if len(windows) == 0:
 
                 st.error(
-                    "Signal is too short for "
-                    "a 2-second window."
+                    "❌ EEG signal is too short "
+                    "for a 2-second window."
                 )
 
                 st.stop()
 
-            # -------------------------------------------------
+
+            # =================================================
             # FEATURE EXTRACTION
-            # -------------------------------------------------
+            # =================================================
 
             feature_rows = []
+
 
             for window in windows:
 
@@ -441,168 +684,20 @@ if uploaded_file is not None:
                     )
                 )
 
+
                 feature_rows.append([
+
                     feature_dict["delta"],
+
                     feature_dict["theta"],
+
                     feature_dict["alpha"],
+
                     feature_dict["beta"],
-                    feature_dict["delta_relative"],
-                    feature_dict["theta_relative"],
-                    feature_dict["alpha_relative"],
-                    feature_dict["beta_relative"],
-                    feature_dict["theta_alpha_ratio"],
-                    feature_dict["differential_entropy"]
-                ])
 
-            X_input = np.asarray(
-                feature_rows
-            )
+                    feature_dict[
+                        "delta_relative"
+                    ],
 
-            # -------------------------------------------------
-            # MODEL PREDICTION
-            # -------------------------------------------------
-
-            predictions = model.predict(
-                X_input
-            )
-
-            # -------------------------------------------------
-            # MAJORITY VOTING
-            # -------------------------------------------------
-
-            final_prediction = int(
-                np.bincount(
-                    predictions
-                ).argmax()
-            )
-
-            # -------------------------------------------------
-            # RESULT
-            # -------------------------------------------------
-
-            st.divider()
-
-            st.subheader(
-                "🧠 Drowsiness Prediction"
-            )
-
-            if final_prediction == 1:
-
-                st.error(
-                    "⚠️ DROWSY — "
-                    "Driver drowsiness detected"
-                )
-
-                st.warning(
-                    "Please consider taking a break."
-                )
-
-            else:
-
-                st.success(
-                    "✅ ALERT — "
-                    "Driver appears alert"
-                )
-
-            # -------------------------------------------------
-            # RESULT METRICS
-            # -------------------------------------------------
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-
-                st.metric(
-                    "Prediction",
-                    "Drowsy"
-                    if final_prediction == 1
-                    else "Alert"
-                )
-
-            with col2:
-
-                st.metric(
-                    "Windows Analyzed",
-                    len(windows)
-                )
-
-            with col3:
-
-                st.metric(
-                    "EEG Channel",
-                    channel_number
-                )
-
-            # -------------------------------------------------
-            # FEATURE TABLE
-            # -------------------------------------------------
-
-            st.subheader(
-                "📊 Extracted EEG Features"
-            )
-
-            feature_names = [
-                "delta",
-                "theta",
-                "alpha",
-                "beta",
-                "delta_relative",
-                "theta_relative",
-                "alpha_relative",
-                "beta_relative",
-                "theta_alpha_ratio",
-                "differential_entropy"
-            ]
-
-            feature_table = {
-                "Feature": feature_names,
-                "Value": X_input[0]
-            }
-
-            st.dataframe(
-                feature_table,
-                use_container_width=True
-            )
-
-            # -------------------------------------------------
-            # EEG SIGNAL
-            # -------------------------------------------------
-
-            st.subheader(
-                "📈 Preprocessed EEG Signal"
-            )
-
-            st.line_chart(
-                cleaned_signal
-            )
-
-            # -------------------------------------------------
-            # PREDICTION DISTRIBUTION
-            # -------------------------------------------------
-
-            st.subheader(
-                "📊 Window Prediction Distribution"
-            )
-
-            alert_count = int(
-                np.sum(predictions == 0)
-            )
-
-            drowsy_count = int(
-                np.sum(predictions == 1)
-            )
-
-            prediction_distribution = {
-                "Alert": alert_count,
-                "Drowsy": drowsy_count
-            }
-
-            st.bar_chart(
-                prediction_distribution
-            )
-
-    except Exception as e:
-
-        st.error(
-            f"Error while processing EEG dataset: {e}"
-        )
+                    feature_dict[
+                        "theta_relative"
